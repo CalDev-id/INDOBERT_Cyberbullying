@@ -62,6 +62,3 @@ if __name__ == '__main__':
     # Train and test model
     trainer.fit(model, datamodule=data_module)
     trainer.test(datamodule=data_module, ckpt_path='best')
-
-    # predict
-    model.predict('ada kecelakaan di jalan tol, hati-hati ya!')
