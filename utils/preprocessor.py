@@ -31,52 +31,64 @@ class TwitterDataModule(pl.LightningDataModule):
         self.processed_dataset_path = "datasets/twitter_label_manual_processed.csv"
 
     def load_data(self):
+        # Load dataset if exists, else preprocess and save
         if os.path.exists(self.processed_dataset_path) and not self.recreate:
             print('[ Loading Dataset ]')
             dataset = pd.read_csv(self.processed_dataset_path)
             print('[ Load Completed ]\n')
         else:
             print('[ Preprocessing Dataset ]')
+            # Read train, validation, and test datasets
             dataset_train = pd.read_csv(self.train_dataset_path)[["text", "label"]]
             dataset_valid = pd.read_csv(self.validation_dataset_path)[["text", "label"]]
             dataset_test = pd.read_csv(self.test_dataset_path)[["text", "label"]]
 
+            # Add a 'step' column to identify the source (train, validation, test)
             dataset_train['step'] = 'train'
             dataset_valid['step'] = 'validation'
             dataset_test['step'] = 'test'
 
+            # Concatenate all datasets into one
             dataset = pd.concat([dataset_train, dataset_valid, dataset_test], ignore_index=True)
 
+            # Get stop words for Bahasa Indonesia using Sastrawi library
             self.stop_words = StopWordRemoverFactory().get_stop_words()
 
+            # Clean and preprocess the 'text' column
             tqdm.pandas(desc='Preprocessing')
             dataset["text"] = dataset["text"].progress_apply(lambda x: self.clean_tweet(x))
             dataset.dropna(subset=['text'], inplace=True)
             print('[ Preprocess Completed ]\n')
 
             print('[ Saving Preprocessed Dataset ]')
+
+            # Save the preprocessed dataset to a CSV file
             dataset.to_csv(self.processed_dataset_path, index=False)
             print('[ Save Completed ]\n')
 
         total_size = len(dataset.index)
 
         print('[ Tokenizing Dataset ]')
+
+        # Initialize lists for tokenized inputs, attention masks, and labels
         train_x_input_ids, train_x_attention_mask, train_y = [], [], []
         valid_x_input_ids, valid_x_attention_mask, valid_y = [], [], []
         test_x_input_ids, test_x_attention_mask, test_y = [], [], []
 
         for (text, label, step) in tqdm(dataset.values.tolist()):
-
+            # One-hot encode labels if specified
             if self.one_hot_label:
                 default = [0]*2
                 default[label] = 1
                 label = default 
 
+            # Tokenize the text using the provided tokenizer
             encoded_text = self.tokenizer(text=text,
                                           max_length=self.max_length,
                                           padding="max_length",
                                           truncation=True)
-
+            
+            # Append the tokenized input, attention mask, and label to the corresponding lists based on the source
             if step == 'train':
                 train_x_input_ids.append(encoded_text['input_ids'])
                 train_x_attention_mask.append(encoded_text['attention_mask'])
@@ -90,6 +102,7 @@ class TwitterDataModule(pl.LightningDataModule):
                 test_x_attention_mask.append(encoded_text['attention_mask'])
                 test_y.append(label)
 
+        # Convert lists to PyTorch tensors
         train_x_input_ids = torch.tensor(train_x_input_ids)
         train_x_attention_mask = torch.tensor(train_x_attention_mask)
         train_y = torch.tensor(train_y).float()
@@ -102,8 +115,9 @@ class TwitterDataModule(pl.LightningDataModule):
         test_x_attention_mask = torch.tensor(test_x_attention_mask)
         test_y = torch.tensor(test_y).float()
 
-        del (dataset)
+        del (dataset) # Release memory by deleting the dataset DataFrame
 
+        # Create TensorDatasets for train, validation, and test sets
         train_dataset = TensorDataset(train_x_input_ids, train_x_attention_mask, train_y)
         valid_dataset = TensorDataset(valid_x_input_ids, valid_x_attention_mask, valid_y)
         test_dataset = TensorDataset(test_x_input_ids, test_x_attention_mask, test_y)
@@ -120,7 +134,8 @@ class TwitterDataModule(pl.LightningDataModule):
         # print('[ Split Completed ]\n')
 
         return train_dataset, valid_dataset, test_dataset
-
+    
+    # Function to clean and preprocess a single tweet text
     def clean_tweet(self, text):
         result = text.lower()
         result = self.remove_emoji(result)  # remove emoji
@@ -141,6 +156,7 @@ class TwitterDataModule(pl.LightningDataModule):
         return emoji.replace_emoji(text, replace='')
 
     def setup(self, stage=None):
+        # Load datasets during the setup phase
         train_data, valid_data, test_data = self.load_data()
         if stage == "fit":
             self.train_data = train_data
@@ -148,6 +164,7 @@ class TwitterDataModule(pl.LightningDataModule):
         elif stage == "test":
             self.test_data = test_data
 
+    # Return DataLoader for the training set
     def train_dataloader(self):
         return DataLoader(
             dataset=self.train_data,
@@ -155,7 +172,8 @@ class TwitterDataModule(pl.LightningDataModule):
             shuffle=True,
             num_workers=multiprocessing.cpu_count()
         )
-
+    
+    # Return DataLoader for the validation set
     def val_dataloader(self):
         return DataLoader(
             dataset=self.valid_data,
@@ -163,6 +181,7 @@ class TwitterDataModule(pl.LightningDataModule):
             num_workers=multiprocessing.cpu_count()
         )
 
+    # Return DataLoader for the test set
     def test_dataloader(self):
         return DataLoader(
             dataset=self.test_data,

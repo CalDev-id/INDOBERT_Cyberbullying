@@ -12,19 +12,33 @@ from models.finetune import Finetune
 from textwrap import dedent
 
 if __name__ == '__main__':
-
-
     # Get arguments values
     model_name = 'indolem/indobert-base-uncased'
     learning_rate = 2e-5
     batch_size = 32
     max_length = 128
 
+    # Print parameter information
+    print(dedent(f'''
+    -----------------------------------
+     Parameter Information        
+    -----------------------------------
+     Name                | Value       
+    -----------------------------------
+     Model Name          | {model_name}
+     Batch Size          | {batch_size}
+     Learning Rate       | {learning_rate}
+     Input Max Length    | {max_length} 
+    -----------------------------------
+    '''))
 
+    # Load pre-trained tokenizer
     pretrained_tokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
-
+    # Load pre-trained model for sequence classification
     pretrained_model = AutoModelForSequenceClassification.from_pretrained(model_name, output_attentions=False, output_hidden_states=False, num_labels=2)
+    # Initialize fine-tuned model with specified learning rate
     model = Finetune(model=pretrained_model, learning_rate=learning_rate)
+    # Initialize data module for Twitter data
     data_module = TwitterDataModule(tokenizer=pretrained_tokenizer, max_length=max_length, batch_size=batch_size, recreate=True, one_hot_label=True)
 
     # Initialize callbacks and progressbar
@@ -48,3 +62,6 @@ if __name__ == '__main__':
     # Train and test model
     trainer.fit(model, datamodule=data_module)
     trainer.test(datamodule=data_module, ckpt_path='best')
+
+    # predict
+    model.predict('ada kecelakaan di jalan tol, hati-hati ya!')

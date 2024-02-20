@@ -9,38 +9,45 @@ from sklearn.metrics import classification_report
 class Finetune(pl.LightningModule):
 
     def __init__(self, model, learning_rate=2e-5) -> None:
-
+        # Inisialisasi kelas Finetune
         super(Finetune, self).__init__()
-        self.model = model
-        self.lr = learning_rate
+        self.model = model # Menggunakan model yang telah diinisialisasi
+        self.lr = learning_rate # Menyimpan learning rate
 
     def forward(self, input_ids, attention_mask, labels=None):
+        # Metode forward untuk melakukan propagasi maju (forward pass)
         if labels is not None:
+            # Jika terdapat label, gunakan loss dan logits dari model
             model_output = self.model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
             return model_output.loss, model_output.logits
         else:
+            # Jika tidak ada label, gunakan hanya logits dari model
             model_output = self.model(input_ids=input_ids, attention_mask=attention_mask)
             return model_output.logits
 
     def configure_optimizers(self):
+        # Konfigurasi optimizers, dalam hal ini menggunakan Adam optimizer
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
 
+    # Metode untuk langkah pelatihan
     def training_step(self, batch, batch_idx):
         input_ids, attention_mask, targets = batch
         loss, logits = self(input_ids=input_ids, attention_mask=attention_mask, labels=targets)
 
         metrics = {}
-        metrics['train_loss'] = loss.item()
+        metrics['train_loss'] = loss.item() # Menyimpan loss pelatihan
 
         self.log_dict(metrics, prog_bar=False, on_epoch=True)
 
         return loss
 
+    # Metode untuk langkah validasi
     def validation_step(self, batch, batch_idx):
         loss, true, pred = self._shared_eval_step(batch, batch_idx)
         return loss, true, pred
 
+    # Metode untuk menyelesaikan epoch validasi
     def validation_epoch_end(self, validation_step_outputs):
         loss = torch.Tensor().to(device='cuda')
         true = []
@@ -72,10 +79,12 @@ class Finetune(pl.LightningModule):
 
         self.log_dict(metrics, prog_bar=False, on_epoch=True)
 
+    # Metode untuk langkah pengujian
     def test_step(self, batch, batch_idx):
         loss, true, pred = self._shared_eval_step(batch, batch_idx)
         return loss, true, pred
 
+    # Metode untuk menyelesaikan epoch pengujian
     def test_epoch_end(self, test_step_outputs):
         loss = torch.Tensor().to(device='cuda')
         true = []
@@ -106,6 +115,7 @@ class Finetune(pl.LightningModule):
 
         return loss
 
+    # Metode untuk langkah evaluasi bersama
     def _shared_eval_step(self, batch, batch_idx):
         input_ids, attention_mask, targets = batch
         loss, logits = self(input_ids=input_ids, attention_mask=attention_mask, labels=targets)
@@ -115,6 +125,7 @@ class Finetune(pl.LightningModule):
 
         return loss, true, pred
 
+    # Metode untuk langkah prediksi
     def predict_step(self, batch, batch_idx):
         input_ids, attention_mask = batch
         logits = self(input_ids=input_ids, attention_mask=attention_mask)
