@@ -134,3 +134,14 @@ class Finetune(pl.LightningModule):
 
         return pred[0]
 
+#step
+    # pertama tama init model dan learning rate
+    # kemudian forward pass untuk melakukan propagasi maju (forward pass)
+    # kemudian configure optimizers, dalam hal ini menggunakan Adam optimizer
+    # kemudian training step untuk langkah pelatihan
+    # kemudian validation step untuk langkah validasi
+    # kemudian validation epoch end untuk menyelesaikan epoch validasi
+    # kemudian test step untuk langkah pengujian
+    # kemudian test epoch end untuk menyelesaikan epoch pengujian
+    # kemudian shared eval step untuk langkah evaluasi bersama
+    # kemudian predict step untuk langkah prediksi

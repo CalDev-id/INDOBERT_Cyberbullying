@@ -188,3 +188,14 @@ class TwitterDataModule(pl.LightningDataModule):
             batch_size=self.batch_size,
             num_workers=multiprocessing.cpu_count()
         )
+
+#step
+    # data di inisialize dulu apakah ada yg sudah di proses atau belum, jika belum maka akan di concat dan diberi label test vali dan train
+    # kemudian di save ke csv
+    # kemudian di load lagi
+    # kemudian di tokenisasi menjadi input_ids, attention_mask, dan label
+    # kemudian di convert menjadi tensor
+    # kemudian di buat menjadi tensor dataset
+    # kemudian di split menjadi train, validation, dan test
+    # kemudian di buat menjadi dataloader
+    
